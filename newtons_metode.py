@@ -21,10 +21,14 @@ def newtons_metode(x, f, dfdx, tol=1e-10, max_iter=100):
         max_iter: ________
     
     Returnerer: ____, ____"""
+    # __________________
     for i in range(max_iter):
+        # __________________
         x = x - f(x)/dfdx(x)
+        # __________________
         if abs(f(x)) < tol:
             break
+    # __________________
     return x, i
 
 # ______________________
