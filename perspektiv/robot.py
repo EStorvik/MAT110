@@ -29,12 +29,12 @@ class Robot():
             return None, None
         
         # calculate theta2
-        theta2 = 2*np.pi-np.arccos((-d**2+self.L1**2+self.L2**2)/(2*self.L1*self.L2))
+        theta2 = np.pi-np.arccos((-d**2+self.L1**2+self.L2**2)/(2*self.L1*self.L2))
         
         # Calculate theta1
-        beta = np.arctan2(y, x)
-        alpha = np.arccos((-self.L2**2+self.L1**2+d**2)/(2*self.L1*d))
-        theta1 = beta + alpha
+        thetah = np.arctan2(y, x)
+        thetai = np.arccos((-self.L2**2+self.L1**2+d**2)/(2*self.L1*d))
+        theta1 = thetah - thetai
         return theta1, theta2
     
 

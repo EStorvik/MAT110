@@ -17,7 +17,7 @@ BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 
-robot = robot.Robot(1.2, 0.9)
+robot = robot.Robot(1.5, 0.9)
 
 # Initialize variables
 base_x, base_y = WIDTH // 2, HEIGHT // 2+100  # Base position of the robot
@@ -42,6 +42,9 @@ def calculate_positions(base_x, base_y, angle1, angle2, length1, length2):
     return (x1, y1), (x2, y2)
 
 _ , initial_position = calculate_positions(base_x, base_y, angle1, angle2, length1, length2)
+
+def inverse_kinematics(x, y):
+    return robot.inverse_kinematics(x,y)
 
 def update_robot(goal_angle1, goal_angle2, angle1, angle2, increment=0.01):
     # Update angles
@@ -111,6 +114,17 @@ instruction_text = font.render(
 )
 instruction_rect = instruction_text.get_rect(topleft=(10, 10))
 
+input_text_pos = ""
+input_rect_pos = pygame.Rect(450, 40, 200, 50)
+input_active_pos = False
+
+
+instruction_text_pos = font.render(
+    "Enter 2 coordinates (e.g., 1, 0.5):", True, BLACK
+)
+instruction_rect_pos = instruction_text_pos.get_rect(topleft=(420, 10))
+
+
 # Cursor variables
 cursor_width = 2
 cursor_color = BLACK
@@ -152,9 +166,40 @@ def draw_input_box():
     window.blit(position_surface, (position_box.x + 5, position_box.y + 5))
 
 
+def draw_input_box_pos():
+    pygame.draw.rect(window, BLACK, input_rect_pos, 2)
+    text_surface = font.render(input_text_pos, True, BLACK)
+    window.blit(text_surface, (input_rect_pos.x + 5, input_rect_pos.y + 5))
+
+    # Draw the instruction text
+    window.blit(instruction_text_pos, instruction_rect_pos.topleft)
+
+    # Draw the cursor if the input box is active and the cursor is visible
+    if input_active_pos and cursor_visible:
+        cursor_x = (
+            input_rect_pos.x + 5 + text_surface.get_width()
+        )  # Cursor position at the end of the text
+        pygame.draw.line(
+            window,
+            cursor_color,
+            (cursor_x, input_rect_pos.y + 5),
+            (cursor_x, input_rect_pos.y + input_rect_pos.height - 5),
+            cursor_width,
+        )
+
+    # Draw the angles text box
+    pygame.draw.rect(window, BLACK, angles_box, 2)
+    angles_surface = font.render(angles_text, True, BLACK)
+    window.blit(angles_surface, (angles_box.x + 5, angles_box.y + 5))
+
+    # Draw the position text box
+    pygame.draw.rect(window, BLACK, position_box, 2)
+    position_surface = font.render(position_text, True, BLACK)
+    window.blit(position_surface, (position_box.x + 5, position_box.y + 5))
+
 
 def rad_to_deg(radians):
-    return round(radians * 180 / math.pi, 0)
+    return float(round(radians * 180 / math.pi, 0))
 
 def deg_to_rad(degrees):
     return round(degrees * math.pi / 180, 9)
@@ -180,8 +225,11 @@ while running:
             # Check if the user clicks on the input box
             if input_rect.collidepoint(event.pos):
                 input_active = not input_active
+            elif input_rect_pos.collidepoint(event.pos):
+                input_active_pos = not input_active_pos
             else:
                 input_active = False
+                input_active_pos = False
         elif event.type == pygame.KEYDOWN:
             # Capture key events when the input box is active
             if input_active:
@@ -202,13 +250,38 @@ while running:
                         )
                     except ValueError:
                         angles_text = (
-                            "Invalid input. Please enter valid 3D coordinates."
+                            "Invalid input. Please enter valid 2D coordinates."
                         )
                     input_text = ""
                 elif event.key == pygame.K_BACKSPACE:
                     input_text = input_text[:-1]
                 else:
                     input_text += event.unicode
+            elif input_active_pos:
+                # Add blinking line to input box
+
+                if event.key == pygame.K_RETURN:
+                    try:
+                        # Attempt to convert the entered text to a numpy array of floats
+                        positions = np.array(
+                            [float(x) for x in input_text_pos.split(",")]
+                        )
+                        if len(positions) != 2:
+                            print("Invalid input. Please enter two coordinates.")
+                        else:
+                            goal_angle1, goal_angle2 = inverse_kinematics(positions[0],positions[1])
+                        angles_text = (
+                            f"Current angles: {rad_to_deg(goal_angle1), rad_to_deg(goal_angle2)}"
+                        )
+                    except ValueError:
+                        position_text = (
+                            "Invalid input. Please enter valid 2D coordinates."
+                        )
+                    input_text_pos = ""
+                elif event.key == pygame.K_BACKSPACE:
+                    input_text_pos = input_text_pos[:-1]
+                else:
+                    input_text_pos += event.unicode
         elif event.type == pygame.QUIT:
             running = False
 
@@ -218,12 +291,13 @@ while running:
 
     # Draw the input box
     draw_input_box()
+    draw_input_box_pos()
 
     # Update robot
     joint1_pos, joint2_pos, angle1, angle2 = update_robot(goal_angle1, goal_angle2, angle1, angle2)
 
     # Updateposition box
-    position_text = f"Current position: {round(joint2_pos[1]/100,2), round(joint2_pos[0]/100,2)}"
+    position_text = f"Current position: {round((joint2_pos[0]-base_y)/100,2), round((-joint2_pos[1]+base_x)/100,2)}"
 
     # Draw the robot arm
     draw_robot(joint1_pos, joint2_pos, angle1, angle2)
